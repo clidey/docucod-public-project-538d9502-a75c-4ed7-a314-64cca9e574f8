@@ -1,0 +1,199 @@
+---
+title: "Extending GDBC for Custom Use Cases"
+description: "Strategies for extending GDBC’s functionality, including supporting additional JDBC features, leveraging driver-specific extensions, and contributing enhancements."
+---
+
+# Extending GDBC for Custom Use Cases
+
+Extend GDBC’s capabilities seamlessly to fit your unique database integration needs. This guide empowers you to harness additional JDBC features, leverage driver-specific extensions, and actively contribute enhancements that broaden GDBC’s functionality.
+
+---
+
+## 1. Overview
+
+### What This Guide Helps You Do
+Expand the base GDBC functionality beyond default capabilities. Learn how to:
+- Support advanced JDBC features currently unavailable in the default drivers.
+- Utilize driver-specific extensions for enhanced database integrations.
+- Contribute custom enhancements back to the GDBC project.
+
+### Prerequisites
+- Familiarity with basic GDBC usage and JDBC concepts. See [Your First JDBC Query](/guides/getting-started/basic-usage).
+- A working Go development environment and understanding of CGO for native library interaction.
+- Java development knowledge, especially with JDBC drivers.
+
+### Expected Outcome
+By completing this guide, you will have actionable strategies and examples for extending GDBC to meet advanced or custom database usage scenarios.
+
+### Time Estimate
+Approximate time: 1-2 hours depending on custom use case complexity.
+
+### Difficulty Level
+Intermediate to Advanced.
+
+---
+
+## 2. Extending Functionality: Strategies & Workflows
+
+### 2.1 Supporting Additional JDBC Features
+GDBC uses native wrappers around Java JDBC drivers via GraalVM native images and CGO. To support new JDBC features:
+
+1. **Identify the feature needed**: For example, advanced transaction isolation levels, named parameter support, or extended metadata retrieval.
+2. **Update Java Wrapper Layer**:
+   - Modify or extend Java wrapper classes within `wrapper/src/main/java/com/identitii/gdbc/wrapper/`.
+   - Add new C entry points annotated with `@CEntryPoint` exposing required methods.
+3. **Rebuild Native Library**:
+   - Use existing build scripts (e.g., `./build-all.sh`) to recompile with your additions.
+4. **Update Go Bindings**:
+   - Add corresponding CGO function declarations to match your new native entry points.
+
+<Note>
+GDBC's architecture relies on clean separation: Java wrappers call native methods, exposed via C headers, and consumed by Go. Maintaining consistent naming and error handling is crucial.
+</Note>
+
+### 2.2 Leveraging Driver-Specific Extensions
+Certain JDBC drivers offer proprietary or advanced features inaccessible through standard JDBC interfaces.
+
+- **Oracle Example**: Continuous Query Notification (CQN) enables event-driven updates.
+  - GDBC can access this through driver extensions like `oracle.jdbc.driver.T4CDriverExtension` (public class exposed for GDBC use).
+
+#### How to leverage these:
+
+1. **Access Driver Extensions in Java**:
+   - Extend the Java wrapper to include calls to driver-specific APIs.
+   - For Oracle, extend or wrap `T4CDriverExtension` functionality for event notifications or driver hints.
+2. **Expose API through CEntryPoints**:
+   - Add methods to call these extensions from the native layer.
+3. **Use in Go**:
+   - Call your new native methods through CGO.
+
+<Warning>
+Proprietary features may lack cross-driver compatibility. Use driver-specific calls conditionally and document usage clearly.
+</Warning>
+
+### 2.3 Contributing Your Enhancements
+Contributions improve GDBC for all users.
+
+- Fork the GDBC repository at [https://github.com/identitii/gdbc](https://github.com/identitii/gdbc).
+- Develop and test your feature additions.
+- Follow the repository's contribution guidelines and submit Pull Requests.
+
+<Tip>
+Engage with maintainers early for complex features to align with project goals and standards.
+</Tip>
+
+---
+
+## 3. Step-by-Step Example: Adding Support for an Extended JDBC Feature
+
+### Scenario
+You want to add support for a new JDBC method that retrieves detailed server session info, currently unsupported by default.
+
+### Steps
+
+<Steps>
+<Step title="Extend Java Wrapper">
+Modify `DriverWrapper.java`:
+- Add a method with `@CEntryPoint` that calls the new JDBC method.
+- Handle exceptions and return errors as strings following GDBC conventions.
+</Step>
+
+<Step title="Expose New Native Method">
+- Define the new method in the associated C header for the target driver—e.g., `oracle/libgdbc-oracle.h`.
+- Ensure proper mapping of parameters and return types.
+</Step>
+
+<Step title="Rebuild Native Libraries">
+Run the build script:
+```bash
+./build-all.sh
+```
+This compiles Java into native shared libraries with your extended features.
+</Step>
+
+<Step title="Update Go Integration">
+Add CGO function declarations to interface with the new native method.
+Use these in your Go code to call the extended functionality seamlessly.
+</Step>
+
+<Step title="Test Your Extension">
+Write unit and integration tests to verify your new feature works reliably.
+Use existing GDBC test harnesses for consistency.
+</Step>
+</Steps>
+
+### Expected Result
+You can now invoke the new JDBC feature through GDBC in your Go applications.
+
+---
+
+## 4. Practical Tips & Best Practices
+
+- **Maintain backward compatibility:** Avoid breaking existing interfaces when extending GDBC.
+- **Use logging:** Enable GDBC tracing to debug new extensions easily with `enableTracing`.
+- **Isolate driver-specific code:** Separate extensions for each driver to keep code clean.
+- **Regularly update dependencies:** Keep your JDBC drivers and GraalVM up to date for stability and new features.
+
+---
+
+## 5. Troubleshooting Common Issues
+
+<AccordionGroup title="Troubleshooting Extensions">
+<Accordion title="Native Library Build Fails After Adding Java Extension">
+- Make sure your new Java class methods are properly annotated with `@CEntryPoint`.
+- Verify no syntax or type issues.
+- Confirm building environment has GraalVM configured.
+</Accordion>
+
+<Accordion title="Go Cannot Find Updated Native Library">
+- Ensure your shared library file (e.g., `libgdbc-oracle.so`) is placed in the correct directory or DYLD_LIBRARY_PATH/LIBRARY_PATH is updated.
+- Clean previous builds before recompile.
+</Accordion>
+
+<Accordion title="New JDBC Features Return Errors or Null">
+- Check error logs with tracing enabled.
+- Validate correct parameter types passed from Go to Java.
+- Confirm feature is supported by target JDBC driver version.
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 6. Next Steps & Additional Resources
+
+- Explore advanced usage guides:
+  - [Performance Tuning & Benchmarking](/guides/advanced-topics-best-practices/performance-tuning)
+  - [Managing Native Driver Libraries](/guides/advanced-topics-best-practices/driver-library-management)
+- Learn about driver-specific workflows:
+  - [Oracle Database Integration](/guides/driver-workflows/working-with-oracle)
+- Reference GDBC core APIs for driver registration and connection management under [API Reference](/api-reference/driver-interfaces).
+
+---
+
+For hands-on examples and further inspiration, review how GDBC internally handles JDBC driver extensions, such as the `oracle.jdbc.driver.T4CDriverExtension` available in the [wrapper source code](https://github.com/identitii/gdbc/tree/main/wrapper/src/main/java/oracle/jdbc/driver).
+
+---
+
+If you encounter difficulties or want to propose enhancements, join the GDBC community discussions and contribute via GitHub at [https://github.com/identitii/gdbc](https://github.com/identitii/gdbc).
+
+---
+
+## Appendix: Sample Snippet for Adding a CEntryPoint in Java Wrapper
+
+```java
+@CEntryPoint(name = "getServerSessionInfo")
+public static CCharPointer getServerSessionInfo(IsolateThread thread) {
+    try {
+        // Example: call custom JDBC method
+        String info = ((OracleConnection) connection).getServerSessionInfo();
+        return c(info);
+    } catch (Throwable e) {
+        setError(e);
+        return c(null);
+    }
+}
+```
+
+Replace `getServerSessionInfo` with the actual method relevant to your extension.
+
+---
