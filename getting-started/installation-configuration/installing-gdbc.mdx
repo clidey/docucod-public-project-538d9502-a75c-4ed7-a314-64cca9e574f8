@@ -1,0 +1,244 @@
+---
+title: "Installing GDBC"
+description: "Step-by-step instructions for installing GDBC and its dependencies on macOS and Linux. Explains the use of bundled scripts for building or wrapping native libraries, and when to use them for different databases."
+---
+
+# Installing GDBC
+
+Welcome to the step-by-step guide for installing GDBC, your Go wrapper for JDBC Java database drivers. This guide covers everything you need to build and install GDBC and its native dependencies on macOS and Linux, using the provided scripts that simplify wrapping or building native libraries tailored for different databases.
+
+---
+
+## 1. Prerequisites & System Requirements
+
+Before you start installing GDBC, make sure your environment meets the following requirements:
+
+- **Operating Systems Supported**: macOS (tested on recent versions), Linux (tested on popular distributions such as Ubuntu)
+- **Java Environment**: GraalVM (Community Edition 19.1.0 recommended) for compiling Java drivers to native libraries
+- **Build Tools Installed:**
+  - Maven (for dependency management and build)
+  - Native build tools (GCC/Linux build-essential, macOS Xcode Command Line Tools)
+  - Zip utility (required during packaging, installs automatically via apt on Linux if missing)
+- **Go Environment:**
+  - Go runtime installed to run your Go application that invokes GDBC
+- **Access Requirements:**
+  - Network access to Maven repositories for fetching JDBC drivers
+  - Permissions to execute shell scripts and install build dependencies
+
+<Tip>
+Ensure your `JAVA_HOME` and `GRAALVM_HOME` environment variables point correctly to your GraalVM installation to avoid native-image build errors.
+</Tip>
+
+---
+
+## 2. Installation Instructions
+
+GDBC uses bundled shell scripts to automate building or wrapping Java JDBC drivers into native shared libraries you can use in your Go applications. This process leverages GraalVM’s native-image tool.
+
+### 2.1 Installation Paths & Files
+
+- Drivers build output directories will be located under the root GDBC directory, e.g., `postgresql`, `mysql`, or `sqlite`.
+- Native shared libraries will be named using the pattern: `libgdbc-<driver>.dylib` (macOS) or `libgdbc-<driver>.so` (Linux).
+
+### 2.2 Installing on macOS
+
+1. **Clone or download the GDBC repository.**
+
+2. **Change to the root directory:**
+
+   ```bash
+   cd path/to/gdbc/
+   ```
+
+3. **Run the bundling script to build all native drivers:**
+
+   ```bash
+   ./build-all.sh
+   ```
+
+   This script runs builds for supported drivers (PostgreSQL, MySQL, SQLite, etc.) for both macOS and Linux.
+
+4. **Verify the driver shared libraries are created in their respective directories:**
+
+   ```bash
+   ls postgresql/libgdbc-postgresql.dylib
+   ls mysql/libgdbc-mysql.dylib
+   # etc.
+   ```
+
+<Tip>
+If you encounter permission errors, make sure scripts are executable:
+
+```bash
+chmod +x build-all.sh wrapper/scripts/*.sh
+```
+</Tip>
+
+### 2.3 Installing on Linux
+
+Installation on Linux requires running the wrapper script individually for each driver.
+
+1. **Navigate to the wrapper scripts directory:**
+
+```bash
+cd wrapper/scripts
+```
+
+2. **Run the wrapping script for your chosen database, for example MySQL:**
+
+```bash
+./wrap-mysql.5.sh
+```
+
+3. **Check the output directory for the compiled shared library:**
+
+```bash
+ls ../../mysql/libgdbc-mysql.so
+```
+
+Repeat this for other drivers as needed.
+
+### 2.4 When to Use Bundled Scripts vs Manual Builds
+
+- Use bundled scripts (`build-all.sh` on macOS or individual wrap scripts on Linux) to easily build supported drivers with correct dependencies and GraalVM configs.
+- If you want to add or build a custom JDBC driver not supported out of the box, you can modify or create your own `wrap-driver.sh` script using the existing ones as templates.
+
+<Warning>
+Oracle JDBC driver is NOT bundled or distributed due to licensing restrictions. You must manually download and integrate it.
+</Warning>
+
+---
+
+## 3. Configuration & Setup After Installation
+
+Once your native shared libraries are ready, you need to set up your environment for your Go application.
+
+### 3.1 Place Shared Libraries
+
+- Copy or ensure the shared library files (e.g., `libgdbc-postgresql.dylib` or `.so`) are in the current working directory where your Go app runs.
+
+- Alternatively, configure environment variables:
+
+  - On macOS, set `DYLD_LIBRARY_PATH` to include the path to the `.dylib` files.
+
+  - On Linux, set `LD_LIBRARY_PATH` accordingly.
+
+Example:
+
+```bash
+export DYLD_LIBRARY_PATH=path/to/libgdbc-postgresql.dylib_directory
+```
+
+### 3.2 Verify GraalVM Native Image Build Settings
+
+Each wrapping script applies native-image options such as:
+
+- Compile-time initialization of frequently used classes
+- Reflection configuration files (to avoid runtime reflection errors)
+
+The wrapping script automates these setups based on each driver’s needs. If you customize the build, ensure these options remain correctly configured.
+
+---
+
+## 4. Testing Your Installation
+
+### 4.1 Running Sample Query Script
+
+In the source, for some drivers, sample shell scripts exist to test the native driver connection and query execution.
+
+Example for MS SQL Server:
+
+```bash
+cd mssql
+./run-query.sh
+```
+
+It runs a simple `SELECT 1;` query using the compiled native library.
+
+### 4.2 Verifying Go Integration
+
+- Import the driver in your Go application:
+
+  ```go
+  import _ "github.com/identitii/gdbc/postgresql"
+  ```
+
+- Open a connection with driver string pointing to your JDBC URL:
+
+  ```go
+  pool, err := sql.Open("gdbc-postgresql", "jdbc:postgresql://localhost:5432/testdb")
+  ```
+
+- Ensure your native shared library is reachable as described above.
+
+---
+
+## 5. Troubleshooting
+
+<AccordionGroup title="Common Installation Issues and Solutions">
+
+<Accordion title="GraalVM native-image command not found">
+
+Ensure GraalVM is correctly installed and on your PATH.
+
+Set JAVA_HOME and PATH:
+
+```bash
+export GRAAL_HOME=/path/to/graalvm-ce-19.1.0
+export JAVA_HOME=$GRAAL_HOME/Contents/Home
+export PATH=$JAVA_HOME/bin:$PATH
+```
+
+Test:
+
+```bash
+native-image --version
+```
+
+</Accordion>
+
+<Accordion title="Missing dependencies during build">
+
+Make sure `mvn`, `zip`, and compiler tools are installed.
+
+On Linux, install missing packages with:
+
+```bash
+sudo apt-get update
+sudo apt-get install maven zip build-essential
+```
+
+</Accordion>
+
+<Accordion title="Driver library not found at runtime">
+
+Check that your shared library (`libgdbc-<driver>.dylib` or `.so`) is in the current working directory, or use the environment variables `DYLD_LIBRARY_PATH` or `LD_LIBRARY_PATH` to specify the path.
+
+</Accordion>
+
+<Accordion title="Oracle driver usage">
+
+Oracle’s JDBC driver is not bundled due to licensing. Download the driver yourself and place it in your local Maven repository or configure the wrapper scripts to build with the Oracle driver.
+
+</Accordion>
+
+</AccordionGroup>
+
+---
+
+## 6. Summary
+
+You have now successfully installed GDBC and built native shared libraries for supported JDBC drivers on macOS or Linux. These libraries allow your Go applications to use robust Java database drivers without needing a separate Java runtime.
+
+You are set to proceed to writing code that uses GDBC drivers to run your first SQL queries.
+
+---
+
+## Additional Resources
+
+- [Supported Drivers & Platforms](../introduction-prerequisites/supported-drivers-platforms)
+- [Setting Up Native Libraries](../installation-configuration/native-driver-setup)
+- [Configuring Your Go Application](../installation-configuration/go-app-integration)
+- Official GDBC repository: [https://github.com/identitii/gdbc](https://github.com/identitii/gdbc)
+
+---

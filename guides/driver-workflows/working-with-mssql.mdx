@@ -1,0 +1,239 @@
+---
+title: "Microsoft SQL Server Integration"
+description: "Tutorial for integrating GDBC with Microsoft SQL Server. Includes connection string structure, example queries, handling authentication, and troubleshooting connectivity."
+---
+
+# Microsoft SQL Server Integration with GDBC
+
+This guide walks you through integrating the GDBC (Graal Database Connectivity) framework with Microsoft SQL Server. It covers setting up your connection string, executing queries, handling authentication, and troubleshooting connectivity issues to ensure a reliable and secure database interaction.
+
+---
+
+## 1. Integration Overview
+
+### What This Guide Helps You Accomplish
+This tutorial enables you to connect your applications using GDBC to Microsoft SQL Server instances effectively. You will learn how to:
+- Construct valid connection strings for MSSQL using GDBC
+- Establish and verify connections
+- Execute SQL queries and handle their results
+- Manage authentication securely
+- Troubleshoot common connectivity issues
+
+### Prerequisites
+- Microsoft SQL Server instance running and accessible
+- Credentials with appropriate database permissions (e.g., `sa` or configured user)
+- GDBC and native MSSQL drivers properly installed and configured
+- Basic knowledge of SQL and JDBC connection concepts
+
+### Expected Outcome
+By completing this guide, you will be able to establish a secure and performant connection between GDBC and Microsoft SQL Server, execute queries, and confidently handle authentication and troubleshooting.
+
+### Time Estimate
+Approximately 15-30 minutes depending on your environment setup and familiarity.
+
+### Difficulty Level
+Intermediate - assumes familiarity with database connectivity basics.
+
+---
+
+## 2. Connection Setup
+
+### 2.1 Understanding the Connection String Structure
+
+GDBC uses standard JDBC URL and connection parameters to connect to MSSQL. The connection string format typically looks like this:
+
+```bash
+jdbc:sqlserver://<host>:<port>;databaseName=<database>;<additional_parameters>
+```
+
+- `host`: The server address (e.g., `localhost` or IP address).
+- `port`: The SQL Server port, commonly `1433`.
+- `databaseName`: The target database you want to connect to.
+- Additional parameters include authentication info and configuration options.
+
+Example:
+```bash
+jdbc:sqlserver://localhost:1433;databaseName=test
+```
+
+### 2.2 Authentication Parameters
+
+Use SQL Server Authentication by providing username and password as separate parameters during connection initialization.
+
+Example credentials:
+- Username: `sa`
+- Password: `yourStrong(!)Password`
+
+### 2.3 Example Connection Sequence Using Shell Script
+
+An example script to run a query via the GDBC MSSQL dynamic library:
+
+```bash
+cd "${0%/*}"
+./libgdbc-mssql-query "com.microsoft.sqlserver.jdbc.SQLServerDriver" "jdbc:sqlserver://localhost:1433;databaseName=test" "sa" "yourStrong(!)Password" "SELECT 1;"
+```
+
+This script demonstrates the basic command to open a connection and execute a simple query.
+
+---
+
+## 3. Running Queries and Managing Transactions
+
+### 3.1 Opening a Connection
+
+Use the GDBC wrapper's `openConnection` method with the connection URL, user, password, and transaction isolation level.
+
+Example Java snippet:
+```java
+String url = "jdbc:sqlserver://localhost:1433;databaseName=test";
+String user = "sa";
+String password = "yourStrong(!)Password";
+// Transaction level example: Connection.TRANSACTION_READ_COMMITTED
+openConnection(thread, url, user, password, Connection.TRANSACTION_READ_COMMITTED);
+```
+
+### 3.2 Executing Queries
+
+Prepare and execute SQL statements through the GDBC prepared statement interface. The wrapper supports:
+- Standard SQL queries
+- Transaction isolation management
+- Retrieving result sets
+
+### 3.3 Transactions
+
+Control transactions explicitly using the following GDBC methods:
+- Begin: `begin(thread)` to start a transaction
+- Commit: `commit(thread)` to apply changes
+- Rollback: `rollback(thread)` to undo
+
+### 3.4 Retrieving Results
+
+Use GDBC `next()` and `getString()`, `getInt()`, etc., functions to iterate through results safely.
+
+---
+
+## 4. Connection Parameters & Options
+
+GDBC supports connection string parameters consistent with the widely used [denisenkom/go-mssqldb driver parameters](https://github.com/denisenkom/go-mssqldb).
+
+### Key Parameters Explained
+| Parameter                 | Description                                                      |
+|---------------------------|------------------------------------------------------------------|
+| user id                   | SQL Server user id; DOMAIN\User format supported for Windows   |
+| password                  | User password                                                   |
+| database                  | Target database                                                 |
+| connection timeout        | Seconds to wait before timeout (0 for no timeout)              |
+| dial timeout              | Seconds for dialing before timeout (default 15)                |
+| encrypt                   | Encryption setting (`true`, `false`, `disable`)                 |
+| TrustServerCertificate    | `true` to skip server cert validation (dev only)               |
+| app name                  | Application identifier sent in connection                       |
+
+### Connection String Formats Supported
+1. **URL Format:**
+
+```text
+sqlserver://username:password@host:port?database=dbname&encrypt=true
+```
+
+2. **ADO Style:**
+
+```text
+server=localhost\SQLExpress;user id=sa;database=master;app name=MyApp
+```
+
+3. **ODBC Style:**
+
+```text
+odbc:server=localhost;user id=sa;password={your;pass};database=test
+```
+
+---
+
+## 5. Authentication Handling
+
+### 5.1 SQL Server Authentication
+- Use explicit username and password credentials.
+- Ensure passwords containing special characters are properly escaped or enclosed as needed.
+
+### 5.2 Windows Authentication & SSO
+- On Windows, leaving user id blank enables Single-Sign-On (SSO) using the current user's credentials.
+- The connection string must omit the `user id` parameter.
+
+### 5.3 Encryption and Trust Settings
+
+For secure connections, configure `encrypt` and `TrustServerCertificate` parameters appropriately:
+- **Production:** Use `encrypt=true` and `TrustServerCertificate=false` with valid server certificates.
+- **Development:** For quick testing, you may set `encrypt=false` or `TrustServerCertificate=true` but be aware of security risks.
+
+---
+
+## 6. Troubleshooting Connectivity
+
+### Common Issues & Solutions
+
+<AccordionGroup title="Troubleshooting Common MSSQL Connectivity Issues">
+<Accordion title="Unable to Connect to SQL Server">
+- **Cause:** Server not running or wrong host/port.
+- **Solution:** Verify the SQL Server instance is running. Check firewall and port 1433 is open.
+</Accordion>
+<Accordion title="Authentication Fails">
+- **Cause:** Incorrect credentials or authentication method mismatch.
+- **Solution:** Confirm user id and password. For Windows authentication, ensure your client supports SSO.
+</Accordion>
+<Accordion title="SSL/TLS Errors">
+- **Cause:** Certificate config incorrect or missing trust.
+- **Solution:** Use `TrustServerCertificate=true` for testing. In production, validate certificates properly.
+</Accordion>
+<Accordion title="Timeouts or Delays">
+- **Cause:** Network latency or server unresponsiveness.
+- **Solution:** Increase `connection timeout`, check network connections and server load.
+</Accordion>
+</AccordionGroup>
+
+### Validation Tips
+- Use the provided example script (`mssql/run-query.sh`) as a quick connectivity test.
+- Enable tracing in GDBC (`enableTracing(thread, true)`) to monitor detailed logs.
+
+---
+
+## 7. Best Practices & Recommendations
+
+- **Use Parameterized Queries:** Always prepare statements using parameters to prevent SQL injection.
+- **Manage Transaction Scope:** Start transactions only when needed to keep operations efficient.
+- **Secure Credentials:** Avoid hard-coding credentials; use environment variables or secure vaults.
+- **Test Queries:** Use `testQueryJSON` function to verify query outputs in JSON format for better parsing.
+- **Monitor and Log:** Turn on tracing during development and debugging.
+
+---
+
+## 8. Example: Running a Simple Query
+
+This Java snippet demonstrates opening a connection, running a query, and printing results:
+
+```java
+CCharPointer url = c("jdbc:sqlserver://localhost:1433;databaseName=test");
+CCharPointer user = c("sa");
+CCharPointer password = c("yourStrong(!)Password");
+openConnection(thread, url, user, password, Connection.TRANSACTION_READ_COMMITTED);
+
+int statementId = prepare(thread, c("SELECT GETDATE();"));
+boolean hasResult = query(thread, statementId);
+
+while (hasResult && next(thread, statementId)) {
+    CCharPointer dateStr = getString(thread, statementId, 1);
+    System.out.println("Current Server Date: " + j(dateStr));
+}
+
+closeStatement(thread, statementId);
+closeConnection(thread);
+```
+
+---
+
+## 9. Additional Resources
+
+- [Go MSSQL Driver README](https://github.com/denisenkom/go-mssqldb/blob/master/README.md) — Detailed connection parameter explanations
+- [Microsoft SQL Server Network Configuration](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-the-network-protocols-for-sql-server) — Official guidance on SQL Server network settings
+- [GDBC Official Documentation](https://github.com/identitii/gdbc) — For core driver details and advanced configurations
+
+---

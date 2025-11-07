@@ -1,0 +1,282 @@
+---
+title: "Oracle Database Integration"
+description: "Guide to using GDBC with Oracle DB, from configuring the native driver library to forming JDBC connections. Discusses licensing caveats, driver builds, and tested usage scenarios."
+---
+
+# Oracle Database Integration with GDBC
+
+This guide walks you through seamlessly integrating the GDBC native driver library with Oracle Database, covering everything from driver setup and licensing considerations to forming JDBC connections and executing queries. Whether you are configuring the driver for the first time or validating your connection, this guide empowers you to achieve a reliable, performant Oracle integration.
+
+---
+
+## 1. Workflow Overview
+
+### What This Guide Helps You Accomplish
+
+You will learn how to configure GDBC's Oracle native driver library, handle licensing caveats, properly build or use pre-built drivers, and establish JDBC connections to Oracle databases. It also covers tested usage scenarios and how to perform basic data operations.
+
+### Prerequisites
+
+- Oracle Database instance accessible to your client environment.
+- Oracle JDBC driver (ojdbc6 version 12.1.0.1) or compatible.
+- GDBC native driver wrapper for Oracle configured in your environment.
+- Basic knowledge of JDBC connection strings and SQL.
+
+### Expected Outcome
+
+By following this guide, you will successfully configure the Oracle native driver with GDBC, establish JDBC connections, and run queries with proper transaction control using the native driver.
+
+### Time Estimate
+
+Approximately 30-45 minutes for initial setup and connection validation.
+
+### Difficulty Level
+
+Intermediate – requires familiarity with database connections and native driver dependencies.
+
+---
+
+## 2. Configuring the Oracle Native Driver Library
+
+### 2.1 Understanding the Driver Build and Licensing
+
+GDBC integrates with Oracle via a native driver wrapper built around the official Oracle JDBC driver. This wrapper includes Java code exposing C entry points to enable native interactions from GDBC.
+
+<Tip>
+The Oracle JDBC driver `ojdbc6` is subject to Oracle's licensing. Ensure you comply with Oracle's licensing terms when using or distributing the driver.
+</Tip>
+
+### 2.2 Setting Up the Native Driver
+
+1. **Driver Identification:**
+   - Group: `com.oracle`
+   - Artifact: `ojdbc6`
+   - Version: `12.1.0.1-atlassian-hosted`
+
+2. **Driver Build Script:**
+
+Use the provided `wrap-oracle.sh` script located in the wrapper scripts directory to build and configure the native driver:
+
+```bash
+#!/bin/bash
+set -e
+
+cd "${0%/*}"
+
+DRIVER_NAME="oracle" \
+DRIVER_GROUP="com.oracle" \
+DRIVER_ARTIFACT="ojdbc6" \
+DRIVER_VERSION="12.1.0.1-atlassian-hosted" \
+DRIVER_REPOSITORY="http://repo.spring.io/plugins-release/" \
+DRIVER_BUILD_TIME_CLASSES="" \
+NATIVE_IMAGE_CONFIG="--allow-incomplete-classpath -H:IncludeResourceBundles=oracle.net.mesg.Message --initialize-at-run-time=oracle.sql.LnxLibServer,oracle.sql.LoadCorejava -H:ReflectionConfigurationFiles=`pwd`/oracle.json -H:ClassInitialization=oracle.jdbc.driver.OracleTimeoutThreadPerVM:rerun" \
+DRIVER_OUTPUT_DIR="`cd ../.. && pwd`/$DRIVER_NAME" \
+  ../wrap-driver.sh
+```
+
+3. **Native Image Configuration:**
+
+The configuration ensures proper native image generation with reflection support for Oracle JDBC internals (see `oracle.json`) and specific Oracle runtime classes for performance.
+
+### 2.3 Native Driver Header Interfaces
+
+The native driver exposes a set of C functions allowing control and data manipulation:
+- `openConnection(...)` / `closeConnection(...)` to open and close JDBC connections
+- Transaction control: `begin()`, `commit()`, `rollback()`
+- Statement management: `prepare()`, `execute()`, `query()`, `closeStatement()`
+- Result handling: `next()`, `columns()`, and methods to get/set different data types
+- Error handling with `getError()`
+
+This interface is defined in `oracle/libgdbc-oracle.h` for static linking and `oracle/libgdbc-oracle_dynamic.h` for dynamic linking.
+
+---
+
+## 3. Establishing JDBC Connections to Oracle with GDBC
+
+Follow these concrete steps to establish and validate JDBC connections using GDBC with the Oracle native driver.
+
+<Steps>
+<Step title="Prepare Oracle User and Permissions">
+
+1. Connect to your Oracle instance as an admin user.
+2. Run the provided SQL script `create.sql` located under `_examples/testdatabases/oracle/` to create a user with sufficient privileges.
+
+```sql
+alter session set "_ORACLE_SCRIPT"=true;
+CREATE USER "GDBCUSER" IDENTIFIED by "password";
+GRANT CONNECT, RESOURCE, DBA to "GDBCUSER" with ADMIN OPTION;
+```
+
+This user will be used in your JDBC connection credentials.
+
+</Step>
+<Step title="Build and Load the Native Oracle Driver">
+
+1. Run `wrap-oracle.sh` to build the native driver.
+2. Confirm the native driver binaries are generated in the specified output directory.
+3. Ensure the driver is accessible to your application runtime.
+
+</Step>
+<Step title="Configure and Open a JDBC Connection">
+
+Use the function `openConnection` from the native driver interface with parameters:
+
+- `url` — Your Oracle JDBC connection string, e.g., `jdbc:oracle:thin:@//host:port/service`
+- `user` — Username (`GDBCUSER`)
+- `password` — The user's password
+- `txIsolation` — JDBC transaction isolation level (integer)
+
+Example invocation in native code context:
+
+```c
+char* error = openConnection(isolateThread, "jdbc:oracle:thin:@localhost:1521/orclpdb", "GDBCUSER", "password", 2);
+if (error != NULL) {
+    // Handle error
+}
+```
+
+This will establish the connection with auto-commit enabled initially.
+
+</Step>
+<Step title="Validate the Connection">
+
+Call `isValid(isolateThread, timeoutSeconds)` with a reasonable timeout (e.g., 3 seconds) to verify the connection is active:
+
+```c
+int valid = isValid(isolateThread, 3);
+if (!valid) {
+    // Connection is invalid, handle error or reconnect
+}
+```
+
+</Step>
+</Steps>
+
+---
+
+## 4. Executing Queries and Managing Transactions
+
+### 4.1 Transaction Control
+
+You can manage transactions explicitly:
+
+- Start a transaction with `begin()` (sets auto-commit false)
+- Complete with `commit()` to save changes or `rollback()` to discard
+
+Example:
+
+```c
+if (begin(isolateThread) != NULL) {
+    // Error starting transaction
+}
+// execute statements
+if (commit(isolateThread) != NULL) {
+    // Handle commit error
+}
+```
+
+### 4.2 Preparing and Executing Statements
+
+1. Use `prepare(sql)` to create a prepared statement:
+
+```c
+int stmtId = prepare(isolateThread, "INSERT INTO employees (id, name) VALUES (?, ?)");
+if (stmtId < 0) {
+    // handle prepare error
+}
+```
+
+2. Bind parameters using `setInt()`, `setString()`, etc., by specifying the statement ID and parameter index.
+3. Execute with `execute(stmtId)` for updates/inserts or `query(stmtId)` for selects.
+4. For queries, iterate results with `next(stmtId)` and retrieve column values using typed getters.
+5. Close the statement using `closeStatement(stmtId)` when done.
+
+### 4.3 Retrieving Column Metadata
+
+Call `columns(stmtId)` to get a comma-separated list of column names and types in the format:
+
+```
+"col1,col2,col3|java.lang.String,java.lang.Integer,java.lang.Double"
+```
+
+Use this to dynamically map columns in your application.
+
+### 4.4 Testing Queries With JSON Output
+
+Use `testQueryJSON(query)` to run a SQL query and get results serialized as JSON for easy integration or testing:
+
+```c
+char* jsonResult = testQueryJSON(isolateThread, "SELECT * FROM employees");
+printf("%s", jsonResult);
+```
+
+---
+
+## 5. Troubleshooting & Best Practices
+
+<AccordionGroup title="Common Issues">
+<Accordion title="Connection Errors">
+
+- Verify your JDBC URL syntax matches Oracle's requirements, including service names or SID.
+- Check user credentials and ensure the database listener is accessible.
+- Use GDBC tracing (`enableTracing(isolateThread, 1)`) to log JDBC calls for diagnostics.
+
+</Accordion>
+<Accordion title="Driver Loading Failures">
+
+- Ensure `ojdbc6` version 12.1.0.1 is present and correctly wrapped.
+- Confirm native image build completes without errors, paying attention to reflection configuration.
+- Check class initialization settings for Oracle network classes.
+
+</Accordion>
+<Accordion title="Statement Execution Errors">
+
+- Always check return values for errors after `prepare()`, `execute()`, and `query()`.
+- Clean up statements after use to avoid resource leaks.
+- Use `getError()` immediately after failure to understand exception details.
+
+</Accordion>
+</AccordionGroup>
+
+<Tip>
+Enable tracing during development to understand JDBC internal behavior, but disable it in production for performance.
+</Tip>
+
+<Note>
+Oracle transactional semantics differ from other databases; always explicitly manage transactions when making multiple related updates.
+</Note>
+
+---
+
+## 6. Next Steps & Related Documentation
+
+- After mastering Oracle integration, explore the [Managing Native Driver Libraries](https://your-docs-url/guides/advanced-topics-best-practices/driver-library-management) guide to optimize native driver usage.
+- Learn to extend GDBC’s driver support in [Extending GDBC for Custom Use Cases](https://your-docs-url/guides/advanced-topics-best-practices/extending-gdbc).
+- For performance optimization, see [Performance Tuning & Benchmarking](https://your-docs-url/guides/advanced-topics-best-practices/performance-tuning).
+- Review the [Connection Management](https://your-docs-url/api-reference/driver-interfaces/connection-management) and [Query Execution & Result Handling](https://your-docs-url/api-reference/driver-interfaces/query-execution) API references for programmatic details.
+
+---
+
+## Appendix: Example Code Snippet (Java Native Interface Entry Point)
+
+```java
+@CEntryPoint(name = "openConnection")
+public static CCharPointer openConnection(IsolateThread thread, CCharPointer url, CCharPointer user, CCharPointer password, int txIsolation) {
+    if (connection != null) {
+        return toError(new IllegalStateException("connection has already been opened"));
+    }
+    try {
+        Connection conn = DriverManager.getConnection(j(url), nullj(user), nullj(password));
+        conn.setAutoCommit(true);
+        conn.setTransactionIsolation(txIsolation);
+        connection = conn;
+        return c(null);
+    } catch (Throwable e) {
+        return toError(e);
+    }
+}
+```
+
+This is the core method used by the native driver to establish JDBC connections.
+
+---

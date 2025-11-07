@@ -1,0 +1,167 @@
+---
+title: "Running Your First Query"
+description: "Guides users through executing a simple SQL query with GDBC, from writing the code to seeing the results. Includes ready-to-use code snippets, driver and connection examples, and useful hints for new users."
+---
+
+# Running Your First Query with GDBC
+
+Welcome to your first step executing SQL queries using the GDBC (Generic Database Connectivity) framework. This guide walks you through writing, compiling, and running a simple Java program that connects to a database, executes a straightforward SQL query, and displays the result. By following this guide, you'll gain hands-on experience with GDBC’s core functionality and confirm your setup is running perfectly.
+
+---
+
+## 1. Prerequisites
+
+Before you start, ensure the following prerequisites are met:
+
+- **Java Development Kit (JDK)** installed (version 8 or higher recommended).
+- **Apache Maven** installed for building the project.
+- Access to a running **PostgreSQL database** on your local machine (or change connection details for your database).
+- Basic familiarity with SQL and command-line operations.
+
+If you have completed the installation of GDBC and set up native libraries as per the installation guides, you are ready to proceed.
+
+---
+
+## 2. Understanding the Example Code
+
+The `SimpleTest.java` Java class demonstrates the core workflow for running your first SQL query through GDBC:
+
+- Load the PostgreSQL JDBC driver.
+- Establish a connection using your database URL and credentials.
+- Create a SQL statement.
+- Execute the query `SELECT 123;`.
+- Retrieve and print the result.
+
+Here is the key section:
+
+```java
+Driver d = (Driver) Class.forName("org.postgresql.Driver").newInstance();
+Properties info = new Properties();
+info.put("user", "root");
+info.put("password", "password");
+Connection conn = d.connect("jdbc:postgresql://localhost/test?loggerLevel=DEBUG", info);
+
+try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT 123;")) {
+    rs.next();
+    System.out.println("result: " + rs.getInt(1));
+}
+```
+
+The program prints logs at important stages to the console to help you follow progress.
+
+---
+
+## 3. Compile and Run Your Query
+
+Follow these step-by-step instructions to run the sample:
+
+<Steps>
+<Step title="Navigate to the project directory">
+Open your terminal and navigate to the directory containing the `SimpleTest.java` file.
+</Step>
+
+<Step title="Compile the project">
+Run Maven to compile the Java sources and build the classpath:
+
+```bash
+mvn compile
+```
+
+This command compiles `SimpleTest.java` into the `target/classes` directory.
+</Step>
+
+<Step title="Set the classpath and run the test">
+Use the following shell script commands (adjusted for your environment) to run the query:
+
+```bash
+CLASSPATH="$(mvn -q exec:exec -Dexec.executable=echo -Dexec.args='%classpath'):$(cd target/classes && pwd)"
+java -cp "$CLASSPATH" SimpleTest "org.postgresql.Driver" "jdbc:postgresql://localhost/test?loggerLevel=DEBUG" "root" "password" "SELECT 1;"
+```
+
+You should see output similar to:
+
+```
+starting
+got driver
+connected
+result: 1
+done
+```
+
+This confirms your application connected successfully, executed the query, and retrieved results.
+</Step>
+</Steps>
+
+---
+
+## 4. Modifying the Query
+
+To run your own queries, you can change the SQL statement in `SimpleTest.java` inside the `executeQuery` method call. For example:
+
+```java
+try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT current_date;")) {
+    rs.next();
+    System.out.println("Today's date: " + rs.getString(1));
+}
+```
+
+Recompile and run to see the new output.
+
+---
+
+## 5. Key Tips and Best Practices
+
+- Use **loggerLevel=DEBUG** in your JDBC URL to enable detailed driver logs helpful for troubleshooting.
+- Store your credentials securely. This example uses hardcoded values for demonstration only.
+- Close your connections and resources properly to avoid leaks. `try-with-resources` ensures this.
+- Customize the database URL when connecting to other databases supported by GDBC.
+
+---
+
+## 6. Troubleshooting Common Issues
+
+<AccordionGroup title="Common Issues and Solutions">
+<Accordion title="Driver Not Found Exception">
+Make sure the PostgreSQL JDBC driver dependency is included in your Maven `pom.xml`. Check the classpath settings if the driver fails to load.
+</Accordion>
+
+<Accordion title="Connection Failure">
+
+- Verify the database is running and accessible at the provided URL.
+- Check username and password correctness.
+- Confirm no firewall or network rules block connections on port 5432 by default.
+
+</Accordion>
+
+<Accordion title="Query Returns No Results or Errors">
+
+- Validate your SQL syntax.
+- Confirm the database contains the queried data.
+- Enable debug logging (`loggerLevel=DEBUG`) for detailed error traces.
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 7. Next Steps
+
+Now that you can run your first query:
+
+- Explore running more complex queries and handling different result sets.
+- Learn to integrate GDBC with your Go or native applications.
+- Review the [Validating Your Setup](https://your-doc-site/getting-started/first-query-validation/quick-validation) guide for further confidence checks.
+- Consult the [Supported Drivers & Platforms](https://your-doc-site/getting-started/introduction-prerequisites/supported-drivers-platforms) page to connect other databases.
+
+---
+
+#### Helpful Resources
+
+- [Installing GDBC](https://your-doc-site/getting-started/installation-configuration/installing-gdbc)
+- [Setting Up Native Libraries](https://your-doc-site/getting-started/installation-configuration/native-driver-setup)
+- [Your First JDBC Query Guide](https://your-doc-site/guides/getting-started/basic-usage)
+
+
+---
+
+By following these clear, practical steps, you've taken your first confident stride into managing databases effortlessly with GDBC!

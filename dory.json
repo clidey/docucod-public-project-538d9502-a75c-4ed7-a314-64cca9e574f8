@@ -1,0 +1,138 @@
+{
+  "background": {
+    "decoration": "gradient"
+  },
+  "colors": {
+    "dark": "#1E3A8A",
+    "light": "#60A5FA",
+    "primary": "#60A5FA"
+  },
+  "favicon": "/favicon.svg",
+  "fonts": {
+    "family": "Montserrat",
+    "format": "woff2",
+    "source": "https://fonts.gstatic.com/s/googlesansflex/v5/t5sJIQcYNIWbFgDgAAzZ34auoVyXkJCOvp3SFWJbN5hF8Ju1x6sKCyp0l9sI40swNJwGpVd4AZzz0v6lJ4qFXNZhGjLvDSkV4USKMo6qQzwliVdHAy9jxTDHg_ugnAakpwGc-cxgUqDCIUI.woff2"
+  },
+  "icons": {
+    "library": "fontawesome"
+  },
+  "logo": {
+    "dark": "./logo/logo.svg",
+    "light": "./logo/logo.svg"
+  },
+  "name": "GDBC - Golang JDBC Driver Wrapper",
+  "navigation": {
+    "tabs": [
+      {
+        "groups": [
+          {
+            "group": "Introduction \u0026 Value",
+            "pages": [
+              "overview/introduction-group/what-is-gdbc",
+              "overview/introduction-group/value-proposition",
+              "overview/introduction-group/target-audience-usecases"
+            ]
+          },
+          {
+            "group": "System Architecture \u0026 Core Concepts",
+            "pages": [
+              "overview/architecture-group/architecture-overview",
+              "overview/architecture-group/core-concepts-terminology",
+              "overview/architecture-group/integration-overview"
+            ]
+          },
+          {
+            "group": "Features \u0026 Supported Drivers",
+            "pages": [
+              "overview/features-group/features-at-a-glance",
+              "overview/features-group/supported-drivers"
+            ]
+          }
+        ],
+        "tab": "Overview"
+      },
+      {
+        "groups": [
+          {
+            "group": "Introduction \u0026 Prerequisites",
+            "pages": [
+              "getting-started/introduction-prerequisites/product-overview",
+              "getting-started/introduction-prerequisites/supported-drivers-platforms",
+              "getting-started/introduction-prerequisites/prerequisites-requirements"
+            ]
+          },
+          {
+            "group": "Installation \u0026 Configuration",
+            "pages": [
+              "getting-started/installation-configuration/installing-gdbc",
+              "getting-started/installation-configuration/native-driver-setup",
+              "getting-started/installation-configuration/go-app-integration"
+            ]
+          },
+          {
+            "group": "First Query \u0026 Validation",
+            "pages": [
+              "getting-started/first-query-validation/running-first-query",
+              "getting-started/first-query-validation/troubleshooting-setup",
+              "getting-started/first-query-validation/quick-validation"
+            ]
+          }
+        ],
+        "tab": "Getting Started"
+      },
+      {
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "guides/getting-started/installation-setup",
+              "guides/getting-started/basic-usage"
+            ]
+          },
+          {
+            "group": "Driver Workflows \u0026 Integrations",
+            "pages": [
+              "guides/driver-workflows/working-with-mssql",
+              "guides/driver-workflows/working-with-oracle",
+              "guides/driver-workflows/working-with-postgresql"
+            ]
+          },
+          {
+            "group": "Advanced Topics \u0026 Best Practices",
+            "pages": [
+              "guides/advanced-topics-best-practices/performance-tuning",
+              "guides/advanced-topics-best-practices/driver-library-management",
+              "guides/advanced-topics-best-practices/extending-gdbc"
+            ]
+          }
+        ],
+        "tab": "Guides"
+      },
+      {
+        "groups": [
+          {
+            "group": "Driver Interfaces",
+            "pages": [
+              "api-reference/driver-interfaces/registering-loading-drivers",
+              "api-reference/driver-interfaces/connection-management",
+              "api-reference/driver-interfaces/query-execution"
+            ]
+          },
+          {
+            "group": "Usage Examples \u0026 Error Handling",
+            "pages": [
+              "api-reference/usage-examples-and-error-handling/sdk-usage-examples",
+              "api-reference/usage-examples-and-error-handling/authentication-authorization",
+              "api-reference/usage-examples-and-error-handling/error-handling-codes"
+            ]
+          }
+        ],
+        "tab": "API Reference"
+      }
+    ]
+  },
+  "styling": {
+    "codeblocks": "dark",
+    "eyebrows": "breadcrumbs"
+  }
+}

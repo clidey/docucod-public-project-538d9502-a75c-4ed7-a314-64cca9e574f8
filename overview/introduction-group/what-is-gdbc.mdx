@@ -1,0 +1,146 @@
+---
+title: "What is GDBC?"
+description: "Learn what GDBC is: a Golang JDBC Driver Wrapper that allows Go applications to communicate with databases using Java JDBC drivers, but without running a Java Virtual Machine. This page sets expectations for stability, maturity, and intended usage as an early-stage project."
+---
+
+# What is GDBC?
+
+## Unlock the Power of Java JDBC Drivers Directly from Go
+
+GDBC is a pioneering Golang JDBC Driver Wrapper designed to break down barriers between Go applications and a vast ecosystem of Java JDBC database drivers. Unlike traditional approaches requiring a full Java Virtual Machine (JVM), GDBC lets you leverage JDBC drivers seamlessly without launching a JVM — providing database connectivity in Go environments with unmatched simplicity and efficiency.
+
+### Why GDBC Matters
+
+By bridging Go and Java database drivers, GDBC enables Go applications to access databases with rich, mature Java drivers that might otherwise be unavailable or incomplete in Go. This is crucial for databases like Oracle or Microsoft SQL Server where robust Go drivers sometimes lag.
+
+### Key Highlights
+
+- **Go-native database access using proven Java JDBC drivers**
+- **No Java Virtual Machine required, reducing overhead and complexity**
+- **Supports major databases including PostgreSQL, Microsoft SQL Server, and Oracle**
+- **Early-stage project: vibrant potential with room to grow in stability and features**
+
+---
+
+## What Exactly Is GDBC?
+
+At its core, GDBC is a lightweight integration layer that wraps Java's JDBC driver API inside native shared libraries built with GraalVM. These libraries expose simple C-style functions that the Go runtime calls via CGO, enabling Go applications to perform database operations using JDBC without running a Java VM process.
+
+### Problem It Solves
+
+Many enterprises rely on sophisticated JDBC drivers for Oracle, MS SQL Server, and PostgreSQL that offer advanced features or enhanced compatibility absent in native Go drivers. Using these drivers traditionally demands embedding a JVM or running an external Java process—both complex and resource-heavy.
+
+GDBC slashes this complexity by compiling these drivers into native shared libraries, letting Go apps call them directly as if they were native drivers.
+
+### How It Works (At a High Level)
+
+- Java JDBC drivers are packaged and compiled into native shared libraries using GraalVM's native-image tool.
+- These libraries expose C entry points that correspond to common JDBC operations: connecting, queries, transactions, parameter binding, and result fetching.
+- Go code calls these C functions via CGO, enabling idiomatic Go applications to open connections, run queries, and handle results.
+
+### What Sets GDBC Apart
+
+- **No JVM Dependency:** Unlike some bridges, no JVM startup means faster initialization and lower memory overhead.
+- **Comprehensive JDBC Access:** Direct access to any JDBC-compliant database driver, extending Go's database reach.
+- **Open and Modular:** Early iterations intend to separate drivers into independent modules for flexibility.
+
+---
+
+## Core Features & Capabilities
+
+### Comprehensive Driver Support
+GDBC currently packages and tests drivers for:
+
+- Microsoft SQL Server (mssql)
+- Oracle Database (oracle) (*driver distributed separately due to licensing*)
+- PostgreSQL (postgresql)
+
+### Transaction Management
+Control transaction boundaries with support for begin, commit, and rollback operations, mapped directly to JDBC transactions.
+
+### Query Execution
+Prepare statements, bind parameters, execute queries and updates, and traverse result sets using native idioms exposed through C functions.
+
+### Advanced Data Handling
+Offers typed getters and setters for basic and advanced SQL types including byte, short, int, long, float, double, String, Timestamp, BigDecimal, and null values.
+
+### Error Handling & Tracing
+Retrieve detailed error messages from the underlying JDBC driver and optionally enable detailed tracing logs for debugging driver interactions.
+
+### Lightweight & Efficient
+Built with GraalVM native-image, GDBC offers a compact driver footprint (~30MB) optimized over time, avoiding JVM startup costs and delivering competitive performance.
+
+---
+
+## Why Should You Care?
+
+### Unlock Rich JDBC Driver Ecosystems
+Many databases have complex or proprietary protocols supported extensively by Java but not fully by Go libraries. GDBC opens these doors with minimal hassle.
+
+### Reduce Operational Complexity
+No need to embed or manage JVMs alongside your Go services, simplifying deployments and reducing resource consumption.
+
+### Early Adoption Benefits
+Although experimental, early adopters gain direct access to enterprise-grade Java drivers, helping bridge gaps in critical database integration capabilities.
+
+### Real-World Example
+Imagine a Go microservice requiring Oracle's advanced features unavailable in open-source Go drivers. GDBC enables usage of Oracle’s official JDBC driver as if it were a native Go driver—without JVM management overhead.
+
+### Caveats and Stability
+GDBC is an early-stage project. Expect ongoing changes, evolving APIs, and limited testing. It is not yet recommended for production use but is an excellent technology preview for advanced users and contributors.
+
+---
+
+## Getting Started With GDBC
+
+Ready to experiment with GDBC? Here’s a quick glimpse at how to get going:
+
+### Prerequisites
+- Golang development environment with CGO enabled
+- Native library files for the chosen JDBC driver (.dylib on macOS, .so on Linux)
+- JDBC driver packaged as GDBC native libraries (see specific driver installation docs)
+
+### Basic Usage
+1. Import the desired driver package in your Go application:
+
+```go
+import _ "github.com/identitii/gdbc/postgresql"
+```
+
+2. Open a connection using the GDBC driver with a standard JDBC connection string:
+
+```go
+pool, err := sql.Open("gdbc-postgresql", "jdbc:postgresql://user:password@host:5432/database")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+3. Use `database/sql` as usual for queries, transactions, and statement handling.
+
+### Locating Native Libraries
+When launching your Go app, ensure that the native driver shared libraries are accessible in the current directory or configured via environment variables like `DYLD_LIBRARY_PATH` or `LD_LIBRARY_PATH`.
+
+---
+
+## Tips for Success
+
+- Enable tracing during early development with `enableTracing(true)` to gain insight into driver operations.
+- Carefully manage lifecycle: properly close connections and statements to avoid resource leaks.
+- Regularly check for updates, as GDBC evolves rapidly with fixes and new features.
+
+---
+
+For more details on installation, configuration, and driver-specific features, consult the related documentation pages:
+
+- [Why Use GDBC? Product Value & Benefits](/overview/introduction-group/value-proposition)
+- [Supported Drivers & Platforms](/getting-started/introduction-prerequisites/supported-drivers-platforms)
+- [Architecture Overview (with Diagram)](/overview/architecture-group/architecture-overview)
+
+Dive in, experiment, and contribute to making GDBC a vital bridge between Go and the Java database world.
+
+---
+
+*This page provides an essential introduction to what GDBC is, its intended audience, and realistic expectations for this early-stage project.*
+
+---

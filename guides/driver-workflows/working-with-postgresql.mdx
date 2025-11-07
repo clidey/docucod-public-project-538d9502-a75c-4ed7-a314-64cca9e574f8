@@ -1,0 +1,202 @@
+---
+title: "PostgreSQL Integration"
+description: "Set up and utilize GDBC for PostgreSQL. Covers example connection strings, native driver usage, recommended practices, and key configuration notes."
+---
+
+# PostgreSQL Integration with GDBC
+
+This guide helps you set up and use GDBC with PostgreSQL databases. You'll find example connection strings, details on native driver usage, recommended configuration best practices, and key notes to ensure smooth integration.
+
+---
+
+## 1. Overview
+
+### What You Will Achieve
+- Establish a connection between your application and PostgreSQL using GDBC.
+- Configure GDBC with appropriate connection strings and native driver settings.
+- Run basic queries and effectively manage PostgreSQL data via GDBC.
+
+### Prerequisites
+- A running PostgreSQL instance accessible from your environment.
+- PostgreSQL user credentials with appropriate permissions.
+- GDBC installed and configured in your development environment.
+- Basic familiarity with JDBC connection URLs.
+
+### Expected Outcome
+By following this guide, you'll have a fully functioning GDBC integration with PostgreSQL and be able to execute queries efficiently.
+
+### Estimated Time
+15–30 minutes for a first connection setup and query execution.
+
+### Difficulty Level
+Beginner to Intermediate
+
+---
+
+## 2. Connecting to PostgreSQL Using GDBC
+
+### Step 1: Prepare Your PostgreSQL Database
+
+If you don’t have a running PostgreSQL instance, use Docker to quickly launch one:
+
+```bash
+docker run -it -p 5432:5432 \
+  -e POSTGRES_USER=root \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=test \
+  postgres
+```
+
+This creates a container with a user `root`, password `password`, and a database named `test`.
+
+### Step 2: Construct Your JDBC Connection String
+
+GDBC uses standard PostgreSQL JDBC URLs. The general format is:
+
+```
+jdbc:postgresql://[host][:port]/[database]?parameter1=value1&parameter2=value2
+```
+
+**Example:**
+
+```text
+jdbc:postgresql://localhost/test?loggerLevel=DEBUG
+```
+
+- `localhost` is the server.
+- `test` is the database name.
+- `loggerLevel=DEBUG` enables detailed logging within GDBC.
+
+### Step 3: Set Connection Properties
+
+Use a `Properties` object (in Java) to specify the database user and password.
+
+Example:
+
+```java
+Properties info = new Properties();
+info.put("user", "root");
+info.put("password", "password");
+```
+
+### Step 4: Establish the Connection and Run A Simple Query
+
+Here’s a minimal Java example demonstrating the workflow:
+
+```java
+import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.Properties;
+
+public class SimpleTest {
+    public static void main(String[] args) throws Exception {
+        System.out.println("Starting PostgreSQL connection test");
+
+        // Load the PostgreSQL driver
+        Driver d = (Driver) Class.forName("org.postgresql.Driver").newInstance();
+
+        // Setup credentials
+        Properties info = new Properties();
+        info.put("user", "root");
+        info.put("password", "password");
+
+        // Connect using JDBC URL
+        Connection conn = d.connect("jdbc:postgresql://localhost/test?loggerLevel=DEBUG", info);
+        System.out.println("Connected to PostgreSQL database");
+
+        // Create and execute a query
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT 123;")) {
+            rs.next();
+            System.out.println("Query result: " + rs.getInt(1));
+        }
+
+        System.out.println("PostgreSQL test completed");
+    }
+}
+```
+
+**Expected Result:**
+
+```
+Starting PostgreSQL connection test
+Connected to PostgreSQL database
+Query result: 123
+PostgreSQL test completed
+```
+
+### Step 5: Verify Connection
+
+Ensure:
+- No exceptions are thrown during connection or query execution.
+- The expected query output is printed correctly.
+
+---
+
+## 3. Working with Native Drivers
+
+### Overview
+GDBC supports native driver integration to optimize PostgreSQL connectivity. The native library exposes functions to manage connections, transactions, query execution, and results.
+
+### Key Native Driver Functions
+These include:
+- `openConnection` — Open and establish a PostgreSQL connection.
+- `closeConnection` — Close an active connection.
+- `begin`, `commit`, and `rollback` — Manage transactions.
+- `prepare`, `execute`, and `query` — Working with SQL statements.
+- Data setters/getters like `setString`, `getString`, `setInt`, `getInt` for binding and retrieving values.
+
+Native driver usage applies mostly to advanced integration where performance and control over native calls are essential.
+
+---
+
+## 4. Best Practices for PostgreSQL Integration
+
+- **Use Explicit SSL Modes:** For production environments, use SSL parameters in the connection string (e.g., `sslmode=require`) to secure the connection.
+- **Pooling:** Use connection pooling at the application level to improve resource management.
+- **LoggerLevel Parameter:** Use the `loggerLevel` connection parameter to control debugging output. Useful for troubleshooting connection and query issues.
+- **Avoid Hardcoding Credentials:** Prefer environment variables or secure vaults over embedding usernames/passwords in code.
+- **Validate Inputs Before Queries:** Use prepared statements or parameterized queries to avoid SQL injection and improve performance.
+
+---
+
+## 5. Troubleshooting
+
+### Common Issues and Resolutions
+
+| Issue                                  | Possible Cause                                 | Resolution                                     |
+|--------------------------------------|-----------------------------------------------|------------------------------------------------|
+| Connection refused or timeout         | PostgreSQL server not running or unreachable  | Start DB, check host/port/firewall             |
+| Invalid user/password                 | Credentials incorrect                          | Verify and update user/password                |
+| `Driver not found` exception          | PostgreSQL driver class not loaded             | Confirm driver dependency and classpath setup |
+| Query execution errors                 | Syntax error or incompatible SQL               | Validate SQL syntax and compatibility          |
+| No results returned unexpectedly      | Query logic or data issue                      | Verify data exists and query correctness       |
+
+### Tips
+- Enable `loggerLevel=DEBUG` in connection strings for verbose logs.
+- Use PostgreSQL client tools (psql) to verify server availability.
+- Confirm network connectivity and firewall rules.
+
+---
+
+## 6. Next Steps & Related Documentation
+
+- Explore the [Your First JDBC Query](https://docs.example.com/guides/getting-started/basic-usage) guide to deepen your understanding.
+- Review [Supported Drivers & Platforms](https://docs.example.com/getting-started/introduction-prerequisites/supported-drivers-platforms) to know more about PostgreSQL driver compatibility.
+- For performance tuning, see [Performance Tuning & Benchmarking](https://docs.example.com/guides/advanced-topics-best-practices/performance-tuning).
+- Learn about managing native driver libraries in [Managing Native Driver Libraries](https://docs.example.com/guides/advanced-topics-best-practices/driver-library-management).
+
+---
+
+## References
+
+- [pgx PostgreSQL Driver and Toolkit](https://godoc.org/github.com/jackc/pgx) — An advanced Go PostgreSQL driver referenced in GDBC
+- [lib/pq PostgreSQL Driver for Go](https://godoc.org/github.com/lib/pq) — Another Go driver compatible with PostgreSQL
+
+---
+
+## Summary
+This guide demonstrates how to integrate GDBC with PostgreSQL, covering connection setup, example code snippets, native driver usage, troubleshooting, and best practices for reliable operation.
+
+---

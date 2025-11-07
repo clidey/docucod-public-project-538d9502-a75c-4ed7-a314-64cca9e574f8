@@ -1,0 +1,189 @@
+---
+title: "Supported Drivers & Platforms"
+description: "Details which databases and drivers are pre-packaged, tested, and supported by GDBC, with notes on platform compatibility. Includes information on Microsoft SQL Server, Oracle DB, PostgreSQL, and hints at future driver support."
+---
+
+# Supported Drivers & Platforms
+
+GDBC offers a robust set of pre-packaged and tested database drivers designed to provide reliable, high-performance connectivity to popular relational database management systems. This page details the supported drivers, the databases they connect to, and the platforms on which they are compatible.
+
+---
+
+## 1. Overview of Supported Database Drivers
+
+GDBC currently supports the following major database drivers out of the box:
+
+- **Microsoft SQL Server**
+- **Oracle Database**
+- **PostgreSQL**
+
+Each driver is carefully wrapped and pre-built for native integration with GDBC, ensuring compatibility and stability.
+
+<Tip>
+You don’t need to manually download or configure these drivers. GDBC delivers them fully packaged for immediate use across supported platforms.
+</Tip>
+
+---
+
+## 2. Microsoft SQL Server Driver
+
+### Driver Details
+- **Driver Group:** `com.microsoft.sqlserver`
+- **Driver Artifact:** `mssql-jdbc`
+- **Driver Version:** 7.3.0.jre8-preview
+- **Driver Class:** `com.microsoft.sqlserver.jdbc.SQLServerDriver`
+
+### Key Features
+- Supports the latest SQL Server authentication protocols.
+- Includes runtime class initialization tuning to optimize native image builds.
+- Configured with resources for localization and error reporting.
+
+### Platform Compatibility
+- **Linux:** Supported and packaged as `libgdbc-mssql.so`.
+- **macOS:** Supported, provided as `libgdbc-mssql.dylib`.
+
+---
+
+## 3. Oracle Database Driver
+
+### Driver Details
+- Fully supported Oracle JDBC driver wrapped with necessary native configurations.
+- Includes extended driver classes such as `oracle.jdbc.driver.T4CDriverExtension` to fully support Oracle's advanced functionalities.
+
+### Platform Compatibility
+- Available for Linux and macOS platforms.
+
+---
+
+## 4. PostgreSQL Driver
+
+### Driver Details
+- **Driver Class:** `org.postgresql.Driver`
+- Configured with selective class initialization for optimized boot time.
+- Offers debug logging capabilities for easier troubleshooting during development.
+
+### Platform Compatibility
+- Packaged for native usage on Linux and macOS with shared libraries named like `libgdbc-postgresql.so` or `libgdbc-postgresql.dylib`.
+
+---
+
+## 5. MySQL & MariaDB Driver Ecosystem (Upcoming and Community Contributions)
+
+While MySQL and MariaDB drivers are not officially pre-packaged in the current stable release, GDBC maintains wrapper scripts and configurations for:
+
+- **MySQL Connector/J versions 5.1.47 and 6.0.6**
+- **MariaDB JDBC driver**
+
+These wrapper scripts handle native image configuration, reflection metadata, and resource bundling necessary for native compilation.
+
+<Tip>
+Community efforts and future releases will expand official support for these drivers. Check the project repository for the latest build scripts and configurations.
+</Tip>
+
+---
+
+## 6. Platform Compatibility Matrix
+
+| Platform  | Microsoft SQL Server | Oracle Database | PostgreSQL | MySQL (Community) | MariaDB (Community) |
+|-----------|---------------------|-----------------|------------|-------------------|---------------------|
+| Linux     | Yes                 | Yes             | Yes        | Scripts available | Scripts available    |
+| macOS     | Yes                 | Yes             | Yes        | Scripts available | Scripts available    |
+| Windows   | Planned             | Planned         | Planned    | Planned           | Planned             |
+
+<Tip>
+Support for Windows platforms is under active development and will be announced in future updates.
+</Tip>
+
+---
+
+## 7. How Drivers are Packaged and Built
+
+GDBC uses automated build scripts to wrap each JDBC driver into a native code library via GraalVM native-image technology. This process includes:
+
+- Compiling Java driver classes with necessary reflection and resource configuration.
+- Building shared libraries (`.so` for Linux, `.dylib` for macOS) that GDBC can load directly.
+- Including debugging support and runtime initialization tuning for optimal performance.
+
+### Example Build Command (PostgreSQL)
+
+```bash
+mvn compile
+
+CLASSPATH="$(mvn -q exec:exec -Dexec.executable=echo -Dexec.args='%classpath'):$(cd target/classes && pwd)"
+
+native-image --no-server \
+  --report-unsupported-elements-at-runtime \
+  --allow-incomplete-classpath \
+  -H:+ReportExceptionStackTraces \
+  --initialize-at-build-time=com.sun.jna.platform.win32.Win32Exception,com.sun.jna.LastErrorException,org.postgresql.Driver,org.postgresql.core.Logger,org.postgresql.util.SharedTimer \
+  -cp $CLASSPATH \
+  -H:Name=simpletest SimpleTest
+
+./simpletest "org.postgresql.Driver" "jdbc:postgresql://localhost/test?loggerLevel=DEBUG" "root" "password" "SELECT 1;"
+```
+
+<Tip>
+Refer to the `wrapper/scripts/` directory in the [GDBC GitHub repository](https://github.com/identitii/gdbc) for driver-specific build scripts.
+</Tip>
+
+---
+
+## 8. Best Practices & Recommendations
+
+- Always use the pre-packaged drivers unless you have a specific need to customize or build your own.
+- Keep your GDBC installation updated to benefit from the latest driver updates and platform improvements.
+- Test your target database connectivity using the provided drivers before deploying to production.
+- For development, enable debug logging (where supported) to simplify troubleshooting.
+
+---
+
+## 9. Troubleshooting Driver Compatibility
+
+<AccordionGroup title="Common Driver & Platform Issues">
+<Accordion title="Driver Not Loading or Found">
+- Verify your application points to the correct driver class name as documented.
+- Confirm that the native driver libraries exist in the expected platform-specific paths.
+- Confirm that no conflicting drivers are loaded in the environment.
+</Accordion>
+<Accordion title="Authentication Failures">
+- Ensure your database credentials and URLs follow correct syntax.
+- Check if additional runtime options are needed for your database driver authentication.
+- Consult error logs for detailed diagnostic messages.
+</Accordion>
+<Accordion title="Platform Compatibility Errors">
+- Verify your OS matches the supported platform for the driver.
+- For macOS and Linux, verify correct shared library permissions.
+- Windows support is in progress; use workarounds cautiously.
+</Accordion>
+</AccordionGroup>
+
+<Tip>
+If problems persist, consult the Troubleshooting Installation & Setup guide in the Getting Started section for comprehensive diagnostics.
+</Tip>
+
+---
+
+## 10. What’s Next?
+
+Once you’ve confirmed the supported drivers and platform compatibility, proceed to:
+
+- [Installing GDBC](https://your-docs-link/getting-started/installation-configuration/installing-gdbc) to set up GDBC on your environment.
+- [Setting Up Native Libraries](https://your-docs-link/getting-started/installation-configuration/native-driver-setup) to prepare native driver bindings.
+- [Configuring Your Go Application](https://your-docs-link/getting-started/installation-configuration/go-app-integration) to connect your Go application using these drivers.
+
+These steps will guide you seamlessly from understanding support to running your first queries.
+
+---
+
+*This page is part of the Getting Started series and complements other documentation topics such as Installation & Configuration and First Query & Validation to enable a smooth, efficient onboarding with GDBC.*
+
+---
+
+## 11. Additional Resources
+
+- [GDBC GitHub Repository](https://github.com/identitii/gdbc) - Source code, build scripts, and community contributions
+- [Supported Drivers & Platforms Overview](https://your-docs-link/getting-started/introduction-prerequisites/supported-drivers-platforms) - High-level driver support summary
+- [Installation & Setup Guide](https://your-docs-link/guides/getting-started/installation-setup) - Detailed installation walkthrough
+
+
+---

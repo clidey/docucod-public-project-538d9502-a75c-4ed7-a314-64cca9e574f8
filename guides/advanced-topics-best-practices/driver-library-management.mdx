@@ -1,0 +1,222 @@
+---
+title: "Managing Native Driver Libraries"
+description: "How to manage, distribute, and update the compiled native driver libraries (.dylib, .so, .dll) for seamless deployment. Discusses library paths, version management, compatibility, and troubleshooting."
+---
+
+# Managing Native Driver Libraries
+
+Efficient management of the native driver libraries (such as `.dylib`, `.so`, and `.dll`) is a cornerstone for deploying GDBC seamlessly across different environments. This guide walks you through how to handle these compiled native binaries, focusing on their generation, version control, deployment paths, compatibility considerations, and troubleshooting tips.
+
+---
+
+## 1. Overview
+
+Native driver libraries encapsulate the compiled, platform-specific components that enable GDBC to interface with various database drivers at runtime. Proper management ensures your applications load the correct libraries without conflicts, maintaining stability and optimal performance.
+
+---
+
+## 2. Prerequisites
+
+Before starting with managing the native libraries:
+
+- Ensure you have built the native drivers using the provided wrapper scripts.
+- Verify your development environment has the necessary tools installed (e.g., `maven`, `zip`, and a compatible `native-image` environment like GraalVM).
+- Confirm platform-specific tools for library modification (e.g., `install_name_tool` on macOS) are available.
+
+---
+
+## 3. Expected Outcome
+
+After completing this guide, you will:
+
+- Understand how native driver libraries are compiled and named.
+- Know where and how to manage these libraries within your project.
+- Be equipped to version, deploy and troubleshoot native libraries to avoid runtime issues.
+
+Estimated Time: 20-30 minutes
+
+Difficulty: Intermediate
+
+---
+
+## 4. Step-by-Step Instructions
+
+### Step 1: Generating Native Driver Libraries
+
+GDBC uses wrapping shell scripts (`wrap-mysql.sh`, etc.) combined with Maven and GraalVM to generate driver native libraries for different database engines.
+
+1. Navigate to the appropriate driver wrapper script folder.
+2. Run the corresponding script (e.g., `wrap-mysql.5.sh` for MySQL version 5.1.47):
+
+```bash
+cd wrapper/scripts
+./wrap-mysql.5.sh
+```
+
+3. The script triggers Maven to download dependencies and compile the native image using GraalVM’s `native-image` tool.
+4. Upon success, the native shared library (e.g., `libgdbc-mysql.dylib`) is placed in the designated output directory (e.g., `$DRIVER_OUTPUT_DIR`).
+
+### Step 2: Understanding Library Paths and Naming
+
+- The resulting native library is named with the pattern `libgdbc-<driver_name>`, such as `libgdbc-mysql.dylib`.
+- On macOS, the `install_name_tool` is executed automatically to set the library’s install path pointing to the current executable path, ensuring the loader finds the library at runtime.
+
+### Step 3: Version Management
+
+- Each driver wrapper script specifies the driver version explicitly (e.g., `DRIVER_VERSION="5.1.47"`).
+- To manage multiple versions:
+  - Use separate directories for each version (e.g., `mysql/5.1.47/`, `mysql/6.0.6/`).
+  - Update environment variables or configuration in your deployment to load the correct versioned `.dylib` or `.so` file.
+
+### Step 4: Deploying Native Libraries
+
+1. Copy the output directory containing the native libraries and associated files (`libgdbc-*.dylib`, `graal_isolate*` files, and Go wrappers) to your deployment environment.
+2. Ensure the library path is configured correctly:
+   - For Linux: Use `LD_LIBRARY_PATH` or equivalent.
+   - For macOS: The `@executable_path` configured by `install_name_tool` resolves relative to the executable location.
+   - For Windows: Place `.dll` files either alongside the executable or in system-recognized library paths.
+3. Update your application configuration to reference these libraries, typically via environment variables or explicit library load paths in your runtime.
+
+### Step 5: Compatibility Considerations
+
+- Native libraries are platform and architecture specific. Always build libraries on the target platform or cross-compile accordingly.
+- Verify GraalVM version compatibility with your Java driver versions.
+- Use reflection configuration JSON files (`mysql.5.json`, `oracle.json`) to ensure all necessary classes and resources are included in the native image.
+
+### Step 6: Troubleshooting Common Issues
+
+<AccordionGroup title="Troubleshooting Library Management">
+<Accordion title="Native Image Compilation Fails">
+- **Cause:** Missing classes, incomplete classpath, or unsupported JVM features.
+- **Solution:** Include required reflection configs with `-H:ReflectionConfigurationFiles`. Use `--allow-incomplete-classpath` flags carefully and verify native-image version compatibility.
+</Accordion>
+<Accordion title="Library Not Found at Runtime">
+- **Cause:** Incorrect library paths or missing install names.
+- **Solution:** On macOS, ensure `install_name_tool` updates `@executable_path`. On Linux, check `LD_LIBRARY_PATH`. For Windows, make sure the `.dll` is discoverable.
+</Accordion>
+<Accordion title="Version Conflict or Mismatched Libraries">
+- **Cause:** Multiple versions of the same driver native library loaded.
+- **Solution:** Keep each driver version isolated in distinct directories and manage environment paths precisely.
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 5. Practical Example: Wrapping and Deploying MySQL Driver Library
+
+```bash
+cd wrapper/scripts
+./wrap-mysql.6.sh  # Builds native lib for MySQL 6.0.6
+
+# Check output directory
+ls ../../mysql
+
+# Deploy native library alongside your Go app or relevant executable
+cp -r ../../mysql /deployment/path/
+
+# On runtime, ensure environment variable points to the path
+export LD_LIBRARY_PATH=/deployment/path/mysql:$LD_LIBRARY_PATH
+
+# Start your application
+./my-go-app
+```
+
+---
+
+## 6. Best Practices
+
+- **Isolate Driver Versions:** Avoid overwriting existing native libraries. Use version-specific directories.
+- **Automate Builds:** Integrate your wrapper script executions into CI pipelines to generate native driver libraries for each release.
+- **Validate Post-Build Libraries:** After building, verify library paths and dependencies using tools like `otool -L` (macOS) or `ldd` (Linux).
+- **Monitor Native Image Warnings:** Use `--verbose` and enable exception stack traces to catch potential runtime issues early.
+
+---
+
+## 7. Useful Commands & Tools
+
+| Tool                | Purpose                                    | Example Command                          |
+|---------------------|--------------------------------------------|----------------------------------------|
+| `native-image`      | Build native driver libraries               | `native-image -cp yourclasspath -H:Name=libgdbc-mysql --shared` |
+| `install_name_tool` | Modify macOS dylib paths                     | `install_name_tool -id @executable_path/libgdbc-mysql.dylib libgdbc-mysql.dylib` |
+| `otool -L`          | Check dylib dependencies (macOS)            | `otool -L libgdbc-mysql.dylib`         |
+| `ldd`               | List library dependencies (Linux)           | `ldd libgdbc-mysql.so`                  |
+
+---
+
+## 8. Next Steps & Additional Resources
+
+- Proceed to [Configuring Your Go Application](../getting-started/installation-configuration/go-app-integration) to integrate the native libraries with your Go code.
+- Review [Supported Drivers & Platforms](../getting-started/introduction-prerequisites/supported-drivers-platforms) for platform compatibility.
+- Consult troubleshooting documentation in [Troubleshooting Installation & Setup](../getting-started/first-query-validation/troubleshooting-setup) for persistent errors.
+
+---
+
+## 9. Summary Diagram
+
+```mermaid
+flowchart TD
+  A[Run Wrapper Script] --> B[Maven Dependency Resolution]
+  B --> C[Compile Native Image via GraalVM]
+  C --> D[Generate Native Library (.dylib, .so, .dll)]
+  D --> E[Modify Library Paths (macOS install_name_tool)]
+  E --> F[Store in Output Directory]
+  F --> G[Deploy to Target Environment]
+  G --> H[Configure Runtime Library Paths]
+  H --> I[Application Loads Native Driver Successfully]
+
+  %% Troubleshooting
+  C -.-> J[Compilation Errors]
+  J -.-> C
+  G -.-> K[Deployment Issues]
+  K -.-> G
+  H -.-> L[Runtime Loading Failures]
+  L -.-> H
+
+  %% Style
+  classDef step fill:#f3f4f6,stroke:#0366d6,stroke-width:1px;
+  class A,B,C,D,E,F,G,H,I step;
+
+  classDef error fill:#fbdcdc,stroke:#cf222e,stroke-width:1px;
+  class J,K,L error;
+```
+
+---
+
+<Tip>
+Managing your native driver libraries with clarity and discipline ensures your GDBC environment remains robust and adaptable. Careful version control and deployment strategies minimize runtime issues and streamline updates.
+</Tip>
+
+<Note>
+Always use the exact driver versions and native libraries compatible with your target platform and GraalVM version to avoid unexpected errors.
+</Note>
+
+
+---
+
+## Appendix: References in Wrapper Script
+
+The `wrap-driver.sh` script automates lifecycle tasks for native libraries:
+
+- Cleans and prepares directories.
+- Downloads driver jars via Maven, managing dependencies.
+- Builds the native image with fine-tuned GraalVM options.
+- Adjusts macOS install names to ensure relative loading paths.
+- Moves native libraries and runtime aids to defined output directory.
+
+Refer to `wrapper/scripts/wrap-mysql.*.sh` scripts as examples for different MySQL versions.
+
+---
+
+## Common Pitfalls
+
+- **Forgetting to install `zip`:** The build requires `zip` for packaging jar contents. Ensure it is installed before building.
+- **Mixing driver versions:** Loading a native library for a different driver version than expected can cause crashes.
+- **Ignoring platform differences:** Don’t use macOS native libraries on Linux or Windows.
+
+Apply care at each step to avoid these problems.
+
+---
+
+This completes the detailed guide on managing native driver libraries within GDBC.
+
+
