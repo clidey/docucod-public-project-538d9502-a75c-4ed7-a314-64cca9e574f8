@@ -1,0 +1,219 @@
+---
+title: "Installation & Setup"
+description: "Step-by-step instructions to install GDBC, set up native libraries on macOS and Linux, and prepare your environment for development. Covers where to place driver libraries, environment variables, and recommended platform-specific setup."
+---
+
+# Installation & Setup Guide for GDBC
+
+Welcome to the Installation & Setup guide for GDBC. This document walks you through the process of installing GDBC, setting up native driver libraries on macOS and Linux, and preparing your environment for smooth development and integration.
+
+---
+
+## 1. Overview
+
+### What This Guide Accomplishes
+This guide leads you through installing GDBC, preparing native libraries for database drivers, configuring environment variables, and ensuring your system is ready to start using GDBC with your applications.
+
+### Prerequisites
+- A macOS or Linux system with administrative privileges.
+- Basic familiarity with terminal commands.
+- Java Development Kit (JDK) installed (required for native image compilation).
+- Maven installed or available via Homebrew on macOS.
+
+### Expected Outcome
+After completing this guide, you will have:
+- Downloaded and installed GDBC native libraries.
+- Set up native image compilation tools.
+- Placed database driver libraries in proper directories.
+- Configured environment variables necessary for GDBC to function.
+
+### Time Estimate
+Approximately 20-30 minutes depending on network speed and system.
+
+### Difficulty Level
+Intermediate — some command line usage and system configuration necessary.
+
+---
+
+## 2. Installation Prerequisites
+
+### Ensure Java and Maven Are Available
+GDBC requires GraalVM for native image compilation, including a compatible Java environment.
+
+#### On macOS
+Use the provided setup script to install GraalVM and Maven:
+
+```bash
+# Run this script from the wrapper directory
+./wrapper/setup-mac.sh
+```
+
+This script:
+- Downloads and unpacks GraalVM.
+- Installs the native-image component.
+- Installs Maven using Homebrew if not present.
+
+#### On Linux
+Ensure you have:
+- GraalVM downloaded and installed manually or via your package manager.
+- Maven installed.
+
+Verify Java and Maven installation:
+
+```bash
+java -version
+mvn -v
+```
+
+---
+
+## 3. Preparing Native Driver Libraries
+
+GDBC wraps native database drivers to provide seamless connectivity. Setting up native libraries correctly is essential.
+
+### Organization of Driver Wrappers
+Each database driver (e.g., MySQL, PostgreSQL) lives in its own directory under the GDBC project root, for example:
+```
+/mysql
+/postgresql
+/mssql
+```
+
+Wrapper scripts for building and packaging native drivers are located in `wrapper/scripts`.
+
+### Building the MySQL Driver
+GDBC provides scripts for both MySQL Connector/J versions 5 and 6.
+
+#### Build MySQL 5.x Driver
+```bash
+cd wrapper/scripts
+./wrap-mysql.5.sh
+```
+
+This script automates:
+- Compiling the native image.
+- Wrapping the MySQL 5.1.47 JDBC driver 
+- Setting up reflection and resource bundles needed by GraalVM.
+
+Expected output directory (default):
+```
+../../mysql
+```
+
+#### Build MySQL 6.x Driver
+```bash
+cd wrapper/scripts
+./wrap-mysql.6.sh
+```
+
+This builds the MySQL Connector/J 6.0.6 driver similarly.
+
+<Tip>
+Choose the driver version matching your application requirements. Version 5 remains widely used but consider version 6 for newer features.
+</Tip>
+
+### Driver Wrapping Process
+The core wrapping script `wrapper/wrap-driver.sh` is called by versioned scripts and:
+- Uses Maven to fetch dependencies.
+- Packages needed classes into a native image.
+- Generates dynamic shared libraries for the driver.
+
+### Additional Drivers
+For other drivers like PostgreSQL and MSSQL, wrapper and Docker configurations are provided (e.g. Dockerfile for MSSQL under `_examples/testdatabases/mssql/`). Review those respective folders for details.
+
+---
+
+## 4. Setting Environment Variables
+
+To use the wrapped native drivers, set necessary environment variables pointing to native libraries.
+
+Example (assuming MySQL):
+
+```bash
+export GDBC_MYSQL_LIB_PATH="/absolute/path/to/mysql"
+export LD_LIBRARY_PATH="$GDBC_MYSQL_LIB_PATH:$LD_LIBRARY_PATH"
+```
+
+Replace the path with where your driver native image libraries reside.
+
+For macOS:
+
+```bash
+export DYLD_LIBRARY_PATH="$GDBC_MYSQL_LIB_PATH:$DYLD_LIBRARY_PATH"
+```
+
+These environment variables ensure your application runtime can locate the native libraries.
+
+---
+
+## 5. Verifying Installation
+
+### Step 1: Confirm Native Library Exists
+Check that the native shared library (e.g., `libgdbc-mysql.dylib` or `.so`) exists in the driver output directory.
+
+```bash
+ls /path/to/mysql/
+# Look for files starting with libgdbc-
+```
+
+### Step 2: Verify Java and Maven Setup
+```bash
+java -version
+mvn -v
+```
+
+### Step 3: Run a Simple Test
+Try building and running a basic Go or Java application that loads the native driver.
+
+Refer to the **Running Your First Query** guide for example workflows.
+
+---
+
+## 6. Troubleshooting Common Issues
+
+<AccordionGroup title="Troubleshooting Installation & Setup">
+<Accordion title="Native Image Compilation Fails">
+- Ensure GraalVM is installed correctly and in your PATH.
+- Confirm the `native-image` tool is installed via `gu install native-image`.
+- Check for missing dependencies using verbose flags.
+</Accordion>
+<Accordion title="Missing Driver Libraries at Runtime">
+- Verify environment variables like `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH` include driver library directories.
+- Confirm native libraries were moved correctly after build.
+</Accordion>
+<Accordion title="Permission Denied During Setup">
+- Run setup commands with appropriate permissions.
+- On Linux, prefix with `sudo` if necessary.
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 7. Best Practices & Tips
+
+- Keep wrapper scripts and native libraries up to date with the GDBC repository releases.
+- On macOS, leverage the `wrapper/setup-mac.sh` script for an automated environment setup.
+- For CI or containerized environments, customize driver builds and paths as per deployment.
+- Use the native driver versions that align with your production databases for compatibility.
+
+---
+
+## 8. Next Steps
+
+After setting up, proceed to:
+- [Running Your First Query](../first-query-validation/running-first-query) to test connectivity.
+- [Configuring Your Go Application](../installation-configuration/go-app-integration) for integration.
+- Review [Troubleshooting Installation & Setup](../first-query-validation/troubleshooting-setup) for advanced diagnostics.
+
+---
+
+## 9. Additional Resources
+
+- [GDBC on GitHub](https://github.com/identitii/gdbc) — source code and issue tracking.
+- GraalVM Native Image documentation — https://www.graalvm.org/reference-manual/native-image/
+- Maven project management — https://maven.apache.org/
+
+
+---
+
+Thank you for choosing GDBC. This installation guide sets the foundation for a robust and performant database connectivity experience using native drivers.
